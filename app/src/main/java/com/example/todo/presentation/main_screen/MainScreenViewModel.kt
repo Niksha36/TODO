@@ -10,6 +10,7 @@ import com.example.core.utils.Resource
 import com.example.todo.domain.model.Project
 import com.example.todo.domain.use_cases.CreateProjectUseCase
 import com.example.todo.domain.use_cases.GetCurrentUserFlowUseCase
+import com.example.todo.domain.use_cases.GetProjectByIdUseCase
 import com.example.todo.domain.use_cases.GetUserByEmailUseCase
 import com.example.todo.domain.use_cases.GetUserProjectsUseCase
 import com.example.todo.domain.use_cases.RemoveProjectUseCase
@@ -29,12 +30,20 @@ class MainScreenViewModel(
     private val getUserByEmailUseCase: GetUserByEmailUseCase,
     private val removeProjectUseCase: RemoveProjectUseCase,
     private val SignOutUseCase: SignOutUseCase,
+    private val getProjectByIdUseCase: GetProjectByIdUseCase,
     private val navigateToAuth: () -> Unit
 ) : ViewModel() {
     var state by mutableStateOf(MainScreenState())
         private set
 
     private var projectsJob: Job? = null
+    private var currentProjectJob: Job? = null
+
+    private val emptyCounts = mapOf(
+        Status.TODO to 0,
+        Status.IN_PROGRESS to 0,
+        Status.COMPLETED to 0
+    )
 
     init {
         getCurrentUser()
@@ -44,16 +53,16 @@ class MainScreenViewModel(
         when (event) {
 
             is MainScreenEvent.SelectProject -> {
-                val tasks = event.project.tasks
-                val countByStatus = mapOf(
-                    Status.TODO to tasks.count { it.status == Status.TODO },
-                    Status.IN_PROGRESS to tasks.count { it.status == Status.IN_PROGRESS },
-                    Status.COMPLETED to tasks.count { it.status == Status.COMPLETED }
-                )
+                val project = event.project
+                // оптимистично обновляем UI и пересчитываем счётчики
                 state = state.copy(
-                    currentProject = event.project,
-                    countOfTasksByStatus = countByStatus
+                    currentProject = project,
+                    countOfTasksByStatus = computeCounts(project)
                 )
+                // подписываемся на поток конкретного проекта, чтобы получать обновления задач
+                if (project.id.isNotBlank()) {
+                    subscribeToProject(project.id)
+                }
             }
 
             is MainScreenEvent.RefreshProjects -> {
@@ -93,8 +102,13 @@ class MainScreenViewModel(
                                         error = ""
                                     )
 
+                                    // если удалили текущий проект — отменяем подписку и сбрасываем счётчики
                                     if (state.currentProject?.id == projectId) {
-                                        state = state.copy(currentProject = null)
+                                        cancelProjectSubscription()
+                                        state = state.copy(
+                                            currentProject = null,
+                                            countOfTasksByStatus = emptyCounts
+                                        )
                                     }
                                     onEvent(MainScreenEvent.RefreshProjects)
                                 }
@@ -236,12 +250,24 @@ class MainScreenViewModel(
                 }
 
                 is Resource.Success -> {
+                    val projects = result.data ?: emptyList()
+                    val currentId = state.currentProject?.id
+                    val updatedCurrent = currentId?.let { id ->
+                        projects.firstOrNull { it.id == id }
+                    }
                     state = state.copy(
                         isLoadingProjects = false,
-                        projects = result.data ?: emptyList(),
+                        projects = projects,
+                        currentProject = updatedCurrent,
+                        countOfTasksByStatus = updatedCurrent?.let { computeCounts(it) } ?: emptyCounts,
                         error = ""
                     )
                     Log.d("MainScreenViewModel", "Projects loaded: ${state.projects.size}")
+
+                    // если после загрузки проектов нашли текущий - убедимся, что подписка активна
+                    updatedCurrent?.id?.let { pid ->
+                        subscribeToProject(pid)
+                    }
                 }
 
                 is Resource.Error -> {
@@ -298,5 +324,53 @@ class MainScreenViewModel(
                 }
             }
         }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
+    }
+
+    private fun computeCounts(project: Project): Map<Status, Int> {
+        val tasks = project.tasks
+        return mapOf(
+            Status.TODO to tasks.count { it.status == Status.TODO },
+            Status.IN_PROGRESS to tasks.count { it.status == Status.IN_PROGRESS },
+            Status.COMPLETED to tasks.count { it.status == Status.COMPLETED }
+        )
+    }
+
+    private fun subscribeToProject(projectId: String) {
+        // отменяем предыдущую подписку
+        currentProjectJob?.cancel()
+        currentProjectJob = getProjectByIdUseCase(projectId)
+            .onEach { result ->
+                when (result) {
+                    is Resource.Loading -> {
+                        // можно выставлять флаг загрузки по проекту при необходимости
+                    }
+                    is Resource.Success -> {
+                        val project = result.data
+                        if (project != null) {
+                            state = state.copy(
+                                currentProject = project,
+                                countOfTasksByStatus = computeCounts(project)
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        // логируем ошибку, но не ломаем UI
+                        Log.w("MainScreenViewModel", "Project subscription error: ${result.message}")
+                    }
+                }
+            }
+            .flowOn(Dispatchers.IO)
+            .launchIn(viewModelScope)
+    }
+
+    private fun cancelProjectSubscription() {
+        currentProjectJob?.cancel()
+        currentProjectJob = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        projectsJob?.cancel()
+        currentProjectJob?.cancel()
     }
 }

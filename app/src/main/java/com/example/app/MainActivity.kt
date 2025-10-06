@@ -151,7 +151,10 @@ fun AuthNavHost(onNavigateToApp: () -> Unit) {
                 LoginScreen(
                     state = viewModel.state,
                     onEvent = viewModel::onEvent,
-                    navigateToApp = onNavigateToApp
+                    navigateToApp = onNavigateToApp,
+                    navigateToRegister = {
+                        authNavController.navigate(Destination.RegisterScreen)
+                    }
                 )
             }
 

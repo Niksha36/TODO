@@ -41,7 +41,8 @@ import com.example.app.ui.theme.TODOTheme
 fun LoginScreen(
     state: LoginScreenState,
     onEvent: (LoginScreenEvent) -> Unit,
-    navigateToApp: () -> Unit
+    navigateToApp: () -> Unit,
+    navigateToRegister: () -> Unit
 ) {
 
     if (state.error != null) {
@@ -114,7 +115,7 @@ fun LoginScreen(
                 color = Green,
                 modifier = Modifier
                     .padding(bottom = 8.dp)
-                    .clickable { })
+                    .clickable { navigateToRegister() })
         }
 
         HorizontalDivider(
@@ -127,7 +128,7 @@ fun LoginScreen(
             ) {
                 SocialMediaButton(
                     icon = R.drawable.tg_icon,
-                    url = "https://vk.com",
+                    url = "https://t.me/NikshA36",
                     color = Color(0xFF4285F4),
                     iconColor = Color.White,
                     modifier = Modifier.weight(1f, fill = true)
@@ -176,7 +177,8 @@ fun LoginScreenPreview() {
                     isLoading = true
                 ),
                 onEvent = {},
-                navigateToApp = {}
+                navigateToApp = {},
+                navigateToRegister = {},
             )
         }
     }

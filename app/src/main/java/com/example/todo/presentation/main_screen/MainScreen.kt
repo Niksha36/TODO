@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.app.ui.theme.Blue
@@ -81,7 +82,7 @@ fun MainScreen(
             ModalDrawerSheet(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(225.dp),
+                    .width(240.dp),
                 drawerContainerColor = Color(0xFF0d1117),
                 drawerContentColor = Color.White,
             ) {
@@ -133,8 +134,7 @@ fun MainScreen(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(15.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Avatar(
@@ -145,11 +145,11 @@ fun MainScreen(
                                     Text(
                                         text = project.name,
                                         style = MaterialTheme.typography.titleSmall,
-                                        modifier = Modifier
-                                            .padding(start = 16.dp),
-                                        maxLines = 2,
+                                        modifier = Modifier.weight(1f)
+                                            .padding(start = 16.dp, end = 10.dp),
+                                        maxLines = 3,
+                                        overflow = TextOverflow.Ellipsis
                                     )
-                                    Spacer(modifier = Modifier.weight(1f))
                                     IconButton(
                                         onClick = {onEvent(MainScreenEvent.DeleteProject(project))}
                                     ) {

@@ -51,6 +51,7 @@ val todoModule = module {
             getUserByEmailUseCase = get(),
             removeProjectUseCase = get(),
             SignOutUseCase = get(),
+            getProjectByIdUseCase = get(),
             navigateToAuth = navigateToAuth
         )
     }

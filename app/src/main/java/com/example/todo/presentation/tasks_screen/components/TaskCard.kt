@@ -179,9 +179,9 @@ fun TaskCard(
             }
         }
 
-        if (task.status != Status.COMPLETED) {
-            Column(horizontalAlignment = Alignment.End) {
 
+        Column(horizontalAlignment = Alignment.End) {
+            if (task.status != Status.COMPLETED) {
                 TaskDropDownMenu(
                     onEditClick = {
                         onEditClick(
